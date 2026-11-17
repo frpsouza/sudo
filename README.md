@@ -6,4 +6,4 @@ Jogo de Sudoku com puzzles fáceis, num único arquivo. Abra `index.html` no nav
 - Cada número de 1 a 9 tem uma cor própria. Os avisos aparecem na cor de fundo da casa.
 - Número proibido (repetido na linha, coluna ou bloco): casa com fundo vermelho.
 - Quando os 9 de um número estão no tabuleiro, as casas dele ficam com fundo verde e o botão ganha ✓.
-- O botão 💡 Solução (toque duas vezes para confirmar) corrige os números errados (fundo laranja) e completa o resto (fundo roxo), com animação.
+- O botão 💡 Solução (toque duas vezes para confirmar) corrige os números errados (fundo laranja) e completa o resto (fundo roxo), mostrando a lógica de cada número: a varredura da linha, coluna e bloco que elimina os outros candidatos, ou o único lugar onde o número cabe. Durante a animação o botão vira ⏩ Rápido e depois ⏭ Pular.

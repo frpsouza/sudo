@@ -27,6 +27,7 @@
     --fix-bg: #ffd79c;
     --reveal: #7c3aed;
     --reveal-bg: #e1d2ff;
+    --scan: #fff2b8;
     --d1: #d62828;
     --d2: #e06c00;
     --d3: #a88600;
@@ -60,6 +61,7 @@
       --fix-bg: #5a3e12;
       --reveal: #b794ff;
       --reveal-bg: #3d2f5e;
+      --scan: #3b3518;
       --d1: #ff6b6b;
       --d2: #ff9a3c;
       --d3: #f2d046;
@@ -125,15 +127,15 @@
   .cell.r2, .cell.r5 { border-bottom: 2px solid var(--line-strong); }
   .cell.r8 { border-bottom: none; }
   /* Cada número tem sua cor; o estado aparece na cor de fundo da casa. */
-  [data-v="1"] { color: var(--d1); }
-  [data-v="2"] { color: var(--d2); }
-  [data-v="3"] { color: var(--d3); }
-  [data-v="4"] { color: var(--d4); }
-  [data-v="5"] { color: var(--d5); }
-  [data-v="6"] { color: var(--d6); }
-  [data-v="7"] { color: var(--d7); }
-  [data-v="8"] { color: var(--d8); }
-  [data-v="9"] { color: var(--d9); }
+  html [data-v="1"] { color: var(--d1); }
+  html [data-v="2"] { color: var(--d2); }
+  html [data-v="3"] { color: var(--d3); }
+  html [data-v="4"] { color: var(--d4); }
+  html [data-v="5"] { color: var(--d5); }
+  html [data-v="6"] { color: var(--d6); }
+  html [data-v="7"] { color: var(--d7); }
+  html [data-v="8"] { color: var(--d8); }
+  html [data-v="9"] { color: var(--d9); }
   .cell.given { font-weight: 800; }
   .cell.user { font-weight: 500; }
   .cell.peer { background: var(--peer); }
@@ -150,6 +152,30 @@
   .cell.wrong { background: var(--error-strong-bg); box-shadow: inset 0 0 0 2px var(--error); animation: shake .4s ease; }
   .cell.cell.fixed { animation: flip .45s ease; }
   .cell.cell.revealed { animation: reveal .4s ease both; }
+  /* Varredura da lógica */
+  .cell.cell.scan { background: var(--scan); }
+  .cell.cell.target { background: var(--reveal-bg); box-shadow: inset 0 0 0 3px var(--reveal); }
+  .cell.hit { animation: hit .5s ease; box-shadow: inset 0 0 0 3px currentColor; font-weight: 800; }
+  .cell.blocked .x { position: relative; opacity: .45; font-size: .8em; }
+  .cell.blocked .x::after {
+    content: ''; position: absolute; left: -15%; right: -15%; top: 50%;
+    border-top: 2px solid var(--error); transform: rotate(-35deg);
+  }
+  .cands {
+    display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr);
+    width: 100%; height: 100%; font-size: clamp(.5rem, 2.4vw, .72rem); font-weight: 700;
+  }
+  .cands span {
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity .25s, transform .3s;
+  }
+  .cands span.out { opacity: .12; transform: scale(.6); }
+  .cands span.only { transform: scale(1.9); }
+  @keyframes hit {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-4px); }
@@ -224,7 +250,7 @@
   }
 
   .toast {
-    min-height: 1.4em;
+    min-height: 2.8em;
     text-align: center;
     font-size: .95rem;
     color: var(--muted);
@@ -540,10 +566,13 @@
     setTimeout(() => winEl.classList.add('show'), 500);
   }
 
-  // ---------- Revelar solução (com animação) ----------
+  // ---------- Revelar solução (com animação da lógica) ----------
   const revealBtn = document.getElementById('reveal');
-  let revealRun = 0, confirmTimer = null;
-  const wait = ms => new Promise(r => setTimeout(r, ms));
+  let revealRun = 0, confirmTimer = null, revealing = false, speed = 1;
+  // speed: 1 = normal, 3 = rápido, Infinity = pular a animação
+  let autoSpeed = 1;                 // acelera sozinho aos poucos
+  const wait = ms => speed === Infinity ? Promise.resolve()
+    : new Promise(r => setTimeout(r, ms / (speed * autoSpeed)));
 
   function resetRevealBtn() {
     clearTimeout(confirmTimer);
@@ -552,6 +581,11 @@
   }
 
   function askReveal() {
+    if (revealing) {                 // durante a animação: acelerar / pular
+      if (speed === 1) { speed = 3; revealBtn.textContent = '⏭ Pular'; }
+      else { speed = Infinity; revealBtn.textContent = '…'; }
+      return;
+    }
     if (finished) return;
     // Primeiro toque pede confirmação, para não revelar por engano.
     if (!revealBtn.classList.contains('confirm')) {
@@ -565,44 +599,166 @@
     reveal();
   }
 
+  // ----- Lógica de busca (como uma pessoa resolveria) -----
+  const rowOf = i => Math.floor(i / 9), colOf = i => i % 9;
+  const boxOf = i => Math.floor(rowOf(i) / 3) * 3 + Math.floor(colOf(i) / 3);
+  const UNITS = [];
+  for (let k = 0; k < 9; k++) {
+    UNITS.push({ name: `linha ${k + 1}`, cells: [...Array(9)].map((_, j) => k * 9 + j) });
+    UNITS.push({ name: `coluna ${k + 1}`, cells: [...Array(9)].map((_, j) => j * 9 + k) });
+    const br = Math.floor(k / 3) * 3, bc = (k % 3) * 3;
+    UNITS.push({ name: `bloco ${k + 1}`, cells: [...Array(9)].map((_, j) => (br + Math.floor(j / 3)) * 9 + bc + j % 3) });
+  }
+  // Ordem de varredura dos vizinhos: linha, coluna e depois bloco.
+  function sweepOrder(i) {
+    const r = rowOf(i), c = colOf(i), b = boxOf(i);
+    const out = [];
+    for (let j = 0; j < 9; j++) if (j !== c) out.push(r * 9 + j);
+    for (let j = 0; j < 9; j++) if (j !== r) out.push(j * 9 + c);
+    for (const p of UNITS[b * 3 + 2].cells) if (rowOf(p) !== r && colOf(p) !== c) out.push(p);
+    return out;
+  }
+  const candidates = i => [1,2,3,4,5,6,7,8,9].filter(n => ![...PEERS[i]].some(p => grid[p] === n));
+
+  // Próximo passo lógico: "único candidato" ou "único lugar".
+  function findNaked() {
+    for (let i = 0; i < 81; i++) {
+      if (grid[i]) continue;
+      const c = candidates(i);
+      if (c.length === 1 && c[0] === solution[i]) return { type: 'naked', cell: i, digit: c[0] };
+    }
+    return null;
+  }
+  function findHidden() {
+    for (const unit of UNITS) {
+      for (let d = 1; d <= 9; d++) {
+        if (unit.cells.some(p => grid[p] === d)) continue;
+        const spots = unit.cells.filter(p => !grid[p] && candidates(p).includes(d));
+        // só vale a pena mostrar se há outras casas vazias para descartar
+        if (spots.length === 1 && solution[spots[0]] === d &&
+            unit.cells.filter(p => !grid[p]).length > 1) return { type: 'hidden', cell: spots[0], digit: d, unit };
+      }
+    }
+    return null;
+  }
+  // Alterna os dois tipos de raciocínio para mostrar os dois.
+  function nextStep(preferHidden) {
+    const step = preferHidden ? (findHidden() || findNaked()) : (findNaked() || findHidden());
+    if (step) return step;
+    // Sem dedução simples: usa a casa com menos candidatos.
+    let best = -1, bestN = 10;
+    for (let i = 0; i < 81; i++) if (!grid[i]) {
+      const n = candidates(i).length;
+      if (n < bestN) { best = i; bestN = n; }
+    }
+    return best < 0 ? null : { type: 'guess', cell: best, digit: solution[best] };
+  }
+
+  const TEMP = ['scan', 'hit', 'target', 'blocked'];
+  function clearTemp() {
+    for (const c of cells) c.classList.remove(...TEMP);
+  }
+  function flash(el) {
+    el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+  }
+  const where = i => `Linha ${rowOf(i) + 1}, coluna ${colOf(i) + 1}`;
+
+  // Varredura de uma casa: risca os candidatos que já aparecem na linha, coluna e bloco.
+  async function animateNaked(step, run) {
+    const i = step.cell, el = cells[i];
+    el.classList.add('target');
+    el.innerHTML = '<div class="cands">' +
+      [1,2,3,4,5,6,7,8,9].map(n => `<span data-v="${n}">${n}</span>`).join('') + '</div>';
+    const spans = el.querySelectorAll('.cands span');
+    msg(`${where(i)}: procurando quais números já aparecem na linha, coluna e bloco…`);
+    await wait(200);
+    for (const p of sweepOrder(i)) {
+      if (run !== revealRun || speed === Infinity) return;
+      cells[p].classList.add('scan');
+      const v = grid[p];
+      if (v && !spans[v - 1].classList.contains('out')) {
+        flash(cells[p]);
+        spans[v - 1].classList.add('out');
+        await wait(90);
+      } else {
+        await wait(20);
+      }
+    }
+    spans[step.digit - 1].classList.add('only');
+    msg(`${where(i)}: só sobra o ${step.digit} — os outros números já estão na linha, coluna ou bloco.`);
+    await wait(700);
+  }
+
+  // Varredura de uma linha/coluna/bloco: o número só cabe em uma casa.
+  async function animateHidden(step, run) {
+    const { cell: i, digit: d, unit } = step;
+    msg(`Na ${unit.name}, onde pode ficar o ${d}?`);
+    for (const p of unit.cells) cells[p].classList.add('scan');
+    await wait(350);
+    for (const p of unit.cells) {
+      if (run !== revealRun || speed === Infinity) return;
+      if (grid[p] || p === i) continue;
+      // Mostra o número igual que impede o d nesta casa.
+      const blocker = sweepOrder(p).find(q => grid[q] === d);
+      cells[p].classList.add('blocked');
+      cells[p].innerHTML = `<span class="x" data-v="${d}">${d}</span>`;
+      if (blocker !== undefined) flash(cells[blocker]);
+      await wait(300);
+    }
+    cells[i].classList.add('target');
+    msg(`Na ${unit.name}, o ${d} só cabe nesta casa — nas outras ele já aparece na linha, coluna ou bloco.`);
+    await wait(700);
+  }
+
+  async function animateGuess(step, run) {
+    cells[step.cell].classList.add('target');
+    msg(`${where(step.cell)}: sem dedução simples aqui — usando a solução: ${step.digit}.`);
+    await wait(900);
+  }
+
   async function reveal() {
     const run = ++revealRun;
     finished = true;               // bloqueia jogadas durante a animação
+    revealing = true;
+    speed = 1; autoSpeed = 1;
+    revealBtn.textContent = '⏩ Rápido';
     clearInterval(timerId);
     selected = -1;
     render();
 
-    // 1) Corrige os números errados
-    const wrong = [];
-    for (let i = 0; i < 81; i++) if (grid[i] && grid[i] !== solution[i]) wrong.push(i);
-    if (wrong.length) {
-      msg(`Corrigindo ${wrong.length} ${wrong.length === 1 ? 'número errado' : 'números errados'}…`, 'err');
-      for (const i of wrong) cells[i].classList.add('wrong');
-      await wait(700);
-      for (const i of wrong) {
-        if (run !== revealRun) return;
-        cells[i].classList.remove('wrong');
-        grid[i] = solution[i];
-        cells[i].classList.add('fixed');
-        render();
-        await wait(220);
-      }
+    // 1) Retira os números errados (serão recolocados certos depois)
+    const wasWrong = new Set();
+    for (let i = 0; i < 81; i++) if (grid[i] && grid[i] !== solution[i]) wasWrong.add(i);
+    if (wasWrong.size) {
+      msg(`Retirando ${wasWrong.size} ${wasWrong.size === 1 ? 'número errado' : 'números errados'}…`, 'err');
+      for (const i of wasWrong) cells[i].classList.add('wrong');
+      await wait(900);
+      if (run !== revealRun) return;
+      for (const i of wasWrong) { cells[i].classList.remove('wrong'); grid[i] = 0; }
+      render();
       await wait(400);
     }
 
-    // 2) Completa as casas vazias
-    const empty = [];
-    for (let i = 0; i < 81; i++) if (!grid[i]) empty.push(i);
-    if (empty.length) msg('Completando a solução…');
-    for (const i of empty) {
+    // 2) Resolve passo a passo, mostrando a varredura de cada número
+    let step, n = 0;
+    while (run === revealRun && (step = nextStep(n % 2 === 1))) {
+      autoSpeed = Math.min(2, 1 + n++ * 0.06);
+      if (speed !== Infinity) {
+        if (step.type === 'naked') await animateNaked(step, run);
+        else if (step.type === 'hidden') await animateHidden(step, run);
+        else await animateGuess(step, run);
+      }
       if (run !== revealRun) return;
-      grid[i] = solution[i];
-      cells[i].classList.add('revealed');
+      clearTemp();
+      grid[step.cell] = step.digit;
+      cells[step.cell].classList.add(wasWrong.has(step.cell) ? 'fixed' : 'revealed');
       render();
-      await wait(60);
+      await wait(250);
     }
     if (run !== revealRun) return;
-    msg(wrong.length
+    revealing = false;
+    resetRevealBtn();
+    msg(wasWrong.size
       ? 'Solução revelada. Fundo laranja: corrigidos; fundo roxo: completados.'
       : 'Solução revelada. Fundo roxo: os números completados.', 'ok');
   }
@@ -614,8 +770,9 @@
 
   function restart() {
     revealRun++;                   // cancela uma animação em andamento
+    revealing = false;
     resetRevealBtn();
-    for (const c of cells) c.classList.remove('wrong', 'fixed', 'revealed');
+    for (const c of cells) c.classList.remove('wrong', 'fixed', 'revealed', ...TEMP);
     grid = puzzle.slice();
     selected = -1; errors = 0; finished = false;
     winEl.classList.remove('show');
