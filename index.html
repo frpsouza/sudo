@@ -285,9 +285,10 @@
     animation: vanish .45s ease both;
     animation-delay: calc(var(--w) * 35ms);
   }
+  /* O puzzle se desenha a partir do centro, abrindo em todas as direções */
   .cell.cell.appear {
     animation: appear .45s ease both;
-    animation-delay: calc(var(--w) * 35ms);
+    animation-delay: calc(var(--dc) * 110ms);
   }
   @keyframes celebrate {
     0% { transform: scale(1); }
@@ -444,6 +445,7 @@
     const d = document.createElement('div');
     d.className = `cell r${r} c${c}`;
     d.style.setProperty('--w', r + c);   // atraso da onda diagonal
+    d.style.setProperty('--dc', Math.hypot(r - 4, c - 4).toFixed(2)); // distância ao centro
     d.addEventListener('click', () => select(i));
     boardEl.appendChild(d);
     cells.push(d);
