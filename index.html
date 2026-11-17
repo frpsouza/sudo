@@ -587,6 +587,7 @@
   }
 
   const delay = ms => new Promise(r => setTimeout(r, ms));
+  let inIntro = false;
   function banner(big, small = '') {
     bannerEl.innerHTML = `<div class="big">${big}</div>` + (small ? `<div class="small">${small}</div>` : '');
     bannerEl.classList.add('show');
@@ -624,15 +625,41 @@
 
     level++;
     saveLevel();
+    intro(next);
+  }
+
+  // Abertura de cada puzzle: mostra o nível, depois "Iniciar!", e o tabuleiro aparece.
+  async function intro(next) {
+    const run = ++revealRun;
+    inIntro = true;
+    finished = true;                 // sem jogadas durante a abertura
+    clearInterval(timerId);
+    selected = -1;
+    for (const c of cells) {
+      c.classList.remove('celebrate', 'vanish', 'appear');
+      c.textContent = ''; c.style.opacity = '0';
+    }
+    levelEl.textContent = `Nível ${level} · ${difficultyName(next.clues)}`;
+    timerEl.textContent = '00:00';
+    msg('');
+    await delay(150);
+    if (run !== revealRun) return;
     banner(`Nível ${level}`, difficultyName(next.clues));
-    for (const c of cells) { c.classList.remove('celebrate', 'vanish'); c.textContent = ''; c.style.opacity = '0'; }
-    await delay(1300);
+    await delay(1400);
     if (run !== revealRun) return;
     hideBanner();
+    await delay(300);
+    if (run !== revealRun) return;
+    banner('Iniciar!');
+    await delay(900);
+    if (run !== revealRun) return;
+    hideBanner();
+    inIntro = false;
     loadPuzzle(next);
     for (const c of cells) c.style.opacity = '';
     playAll('appear');
-    setTimeout(() => { if (run + 1 === revealRun) for (const c of cells) c.classList.remove('appear'); }, 1500);
+    const live = revealRun;
+    setTimeout(() => { if (live === revealRun) for (const c of cells) c.classList.remove('appear'); }, 1500);
   }
 
   // ---------- Revelar solução (com animação da lógica) ----------
@@ -838,7 +865,7 @@
     restart();
   }
   // Novo jogo: outro puzzle do mesmo nível.
-  const newGame = () => loadPuzzle(generate(cluesForLevel(level)));
+  const newGame = () => intro(generate(cluesForLevel(level)));
 
   function restart() {
     revealRun++;                   // cancela uma animação em andamento
@@ -859,7 +886,7 @@
   }
 
   document.getElementById('erase').addEventListener('click', erase);
-  document.getElementById('restart').addEventListener('click', restart);
+  document.getElementById('restart').addEventListener('click', () => { if (!inIntro) restart(); });
   document.getElementById('newgame').addEventListener('click', newGame);
   revealBtn.addEventListener('click', askReveal);
 
