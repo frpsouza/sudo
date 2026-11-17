@@ -285,10 +285,10 @@
     animation: vanish .45s ease both;
     animation-delay: calc(var(--w) * 35ms);
   }
-  /* O puzzle se desenha a partir do centro, abrindo em todas as direções */
+  /* O puzzle se desenha em espiral, do centro para fora */
   .cell.cell.appear {
     animation: appear .45s ease both;
-    animation-delay: calc(var(--dc) * 110ms);
+    animation-delay: calc(var(--sp) * 22ms);
   }
   @keyframes celebrate {
     0% { transform: scale(1); }
@@ -301,8 +301,8 @@
     100% { transform: scale(0) rotate(-90deg); opacity: 0; }
   }
   @keyframes appear {
-    0% { transform: scale(0); opacity: 0; }
-    70% { transform: scale(1.12); opacity: 1; }
+    0% { transform: scale(0) rotate(-180deg); opacity: 0; }
+    70% { transform: scale(1.12) rotate(10deg); opacity: 1; }
     100% { transform: scale(1); opacity: 1; }
   }
 </style>
@@ -445,10 +445,25 @@
     const d = document.createElement('div');
     d.className = `cell r${r} c${c}`;
     d.style.setProperty('--w', r + c);   // atraso da onda diagonal
-    d.style.setProperty('--dc', Math.hypot(r - 4, c - 4).toFixed(2)); // distância ao centro
     d.addEventListener('click', () => select(i));
     boardEl.appendChild(d);
     cells.push(d);
+  }
+  // Ordem em espiral a partir do centro: direita, baixo, esquerda, cima…
+  {
+    let r = 4, c = 4, k = 0, len = 1, dir = 0;
+    const D = [[0, 1], [1, 0], [0, -1], [-1, 0]];
+    cells[40].style.setProperty('--sp', k++);
+    while (k < 81) {
+      for (let t = 0; t < 2; t++) {
+        for (let s = 0; s < len; s++) {
+          r += D[dir][0]; c += D[dir][1];
+          if (r >= 0 && r < 9 && c >= 0 && c < 9) cells[r * 9 + c].style.setProperty('--sp', k++);
+        }
+        dir = (dir + 1) % 4;
+      }
+      len++;
+    }
   }
   for (let n = 1; n <= 9; n++) {
     const b = document.createElement('button');
@@ -661,7 +676,7 @@
     for (const c of cells) c.style.opacity = '';
     playAll('appear');
     const live = revealRun;
-    setTimeout(() => { if (live === revealRun) for (const c of cells) c.classList.remove('appear'); }, 1500);
+    setTimeout(() => { if (live === revealRun) for (const c of cells) c.classList.remove('appear'); }, 2500);
   }
 
   // ---------- Revelar solução (com animação da lógica) ----------
