@@ -3,6 +3,7 @@
 Jogo de Sudoku com puzzles fáceis, num único arquivo. Abra `index.html` no navegador.
 
 - Toque numa casa e escolha o número na fileira inferior (1–9).
-- Número proibido (repetido na linha, coluna ou bloco) aparece em vermelho.
-- Quando os 9 de um número estão no tabuleiro, ele fica verde com ✓.
-- O botão 💡 Solução (toque duas vezes para confirmar) corrige os números errados (laranja) e completa o resto (roxo), com animação.
+- Cada número de 1 a 9 tem uma cor própria. Os avisos aparecem na cor de fundo da casa.
+- Número proibido (repetido na linha, coluna ou bloco): casa com fundo vermelho.
+- Quando os 9 de um número estão no tabuleiro, as casas dele ficam com fundo verde e o botão ganha ✓.
+- O botão 💡 Solução (toque duas vezes para confirmar) corrige os números errados (fundo laranja) e completa o resto (fundo roxo), com animação.

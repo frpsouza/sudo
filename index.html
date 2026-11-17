@@ -13,18 +13,29 @@
     --given: #1f2430;
     --user: #2b5fd9;
     --error: #d62828;
-    --error-bg: #fde2e2;
+    --error-bg: #ffd3d3;
+    --error-strong-bg: #ffa8a8;
     --line: #c9c4b8;
     --line-strong: #1f2430;
-    --sel: #c7d8ff;
-    --peer: #e9eef9;
-    --same: #d6e2ff;
+    --sel: #dbe6ff;
+    --sel-ring: #2b5fd9;
+    --peer: #eef1f7;
+    --same: #dde3ee;
     --done: #2a9d5c;
-    --done-bg: #e3f4ea;
+    --done-bg: #c4ecd2;
     --fix: #d97706;
-    --fix-bg: #fdecc8;
+    --fix-bg: #ffd79c;
     --reveal: #7c3aed;
-    --reveal-bg: #ede4fd;
+    --reveal-bg: #e1d2ff;
+    --d1: #d62828;
+    --d2: #e06c00;
+    --d3: #a88600;
+    --d4: #23963a;
+    --d5: #0b9396;
+    --d6: #1f68d6;
+    --d7: #6b3fd4;
+    --d8: #c4219a;
+    --d9: #7b4a1c;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -36,17 +47,28 @@
       --user: #7fa6ff;
       --error: #ff6b6b;
       --error-bg: #4a1f24;
+      --error-strong-bg: #7a2630;
       --line: #3a3e48;
       --line-strong: #c9ccd3;
-      --sel: #34466e;
+      --sel: #2c3550;
+      --sel-ring: #7fa6ff;
       --peer: #252a35;
-      --same: #2d3a58;
+      --same: #313848;
       --done: #4cc38a;
-      --done-bg: #1d3a2c;
+      --done-bg: #1f4a33;
       --fix: #f5a524;
-      --fix-bg: #4a3512;
+      --fix-bg: #5a3e12;
       --reveal: #b794ff;
-      --reveal-bg: #33284d;
+      --reveal-bg: #3d2f5e;
+      --d1: #ff6b6b;
+      --d2: #ff9a3c;
+      --d3: #f2d046;
+      --d4: #5fd37a;
+      --d5: #3fd3d6;
+      --d6: #6fa5ff;
+      --d7: #a98bff;
+      --d8: #ff6fd0;
+      --d9: #d39a63;
     }
   }
   * { box-sizing: border-box; }
@@ -102,19 +124,32 @@
   .cell.c2, .cell.c5 { border-right: 2px solid var(--line-strong); }
   .cell.r2, .cell.r5 { border-bottom: 2px solid var(--line-strong); }
   .cell.r8 { border-bottom: none; }
-  .cell.given { color: var(--given); font-weight: 600; }
-  .cell.user { color: var(--user); }
+  /* Cada número tem sua cor; o estado aparece na cor de fundo da casa. */
+  [data-v="1"] { color: var(--d1); }
+  [data-v="2"] { color: var(--d2); }
+  [data-v="3"] { color: var(--d3); }
+  [data-v="4"] { color: var(--d4); }
+  [data-v="5"] { color: var(--d5); }
+  [data-v="6"] { color: var(--d6); }
+  [data-v="7"] { color: var(--d7); }
+  [data-v="8"] { color: var(--d8); }
+  [data-v="9"] { color: var(--d9); }
+  .cell.given { font-weight: 800; }
+  .cell.user { font-weight: 500; }
   .cell.peer { background: var(--peer); }
   .cell.same { background: var(--same); }
-  .cell.selected { background: var(--sel); }
+  .cell.selected { background: var(--sel); box-shadow: inset 0 0 0 3px var(--sel-ring); }
+  .cell.complete { background: var(--done-bg); }
+  .cell.cell.revealed { background: var(--reveal-bg); }
+  .cell.cell.fixed { background: var(--fix-bg); }
   .cell.conflict { background: var(--error-bg); }
-  .cell.error { color: var(--error); font-weight: 700; }
-  .cell.complete { color: var(--done); }
+  .cell.error { background: var(--error-strong-bg); box-shadow: inset 0 0 0 2px var(--error); }
+  .cell.error.selected { box-shadow: inset 0 0 0 3px var(--error); }
   .cell.pop { animation: pop .45s ease; }
   /* Revelar solução */
-  .cell.wrong { background: var(--error-bg); color: var(--error); animation: shake .4s ease; }
-  .cell.cell.fixed { color: var(--fix); background: var(--fix-bg); font-weight: 700; animation: flip .45s ease; }
-  .cell.cell.revealed { color: var(--reveal); animation: reveal .4s ease both; }
+  .cell.wrong { background: var(--error-strong-bg); box-shadow: inset 0 0 0 2px var(--error); animation: shake .4s ease; }
+  .cell.cell.fixed { animation: flip .45s ease; }
+  .cell.cell.revealed { animation: reveal .4s ease both; }
   @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-4px); }
@@ -125,8 +160,8 @@
     100% { transform: rotateX(0); }
   }
   @keyframes reveal {
-    0% { transform: scale(.2); opacity: 0; background: var(--reveal-bg); }
-    60% { transform: scale(1.2); opacity: 1; background: var(--reveal-bg); }
+    0% { transform: scale(.2); opacity: 0; }
+    60% { transform: scale(1.2); opacity: 1; }
     100% { transform: scale(1); }
   }
   @keyframes pop {
@@ -167,7 +202,6 @@
   .num.done {
     background: var(--done-bg);
     border-color: var(--done);
-    color: var(--done);
   }
   .num.done .left { color: var(--done); }
 
@@ -360,6 +394,7 @@
   for (let n = 1; n <= 9; n++) {
     const b = document.createElement('button');
     b.className = 'num';
+    b.dataset.v = n;
     b.innerHTML = `<span>${n}</span><span class="left"></span>`;
     b.setAttribute('aria-label', `Número ${n}`);
     b.addEventListener('click', () => input(n));
@@ -413,6 +448,7 @@
     for (let i = 0; i < 81; i++) {
       const el = cells[i], v = grid[i];
       el.textContent = v || '';
+      el.dataset.v = v || '';
       const isGiven = puzzle[i] !== 0;
       el.classList.toggle('given', isGiven);
       el.classList.toggle('user', !isGiven && v !== 0);
@@ -567,8 +603,8 @@
     }
     if (run !== revealRun) return;
     msg(wrong.length
-      ? 'Solução revelada. Em laranja: corrigidos; em roxo: completados.'
-      : 'Solução revelada. Em roxo: os números completados.', 'ok');
+      ? 'Solução revelada. Fundo laranja: corrigidos; fundo roxo: completados.'
+      : 'Solução revelada. Fundo roxo: os números completados.', 'ok');
   }
 
   function newGame() {
