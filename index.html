@@ -21,6 +21,10 @@
     --same: #d6e2ff;
     --done: #2a9d5c;
     --done-bg: #e3f4ea;
+    --fix: #d97706;
+    --fix-bg: #fdecc8;
+    --reveal: #7c3aed;
+    --reveal-bg: #ede4fd;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -39,6 +43,10 @@
       --same: #2d3a58;
       --done: #4cc38a;
       --done-bg: #1d3a2c;
+      --fix: #f5a524;
+      --fix-bg: #4a3512;
+      --reveal: #b794ff;
+      --reveal-bg: #33284d;
     }
   }
   * { box-sizing: border-box; }
@@ -103,6 +111,24 @@
   .cell.error { color: var(--error); font-weight: 700; }
   .cell.complete { color: var(--done); }
   .cell.pop { animation: pop .45s ease; }
+  /* Revelar solução */
+  .cell.wrong { background: var(--error-bg); color: var(--error); animation: shake .4s ease; }
+  .cell.cell.fixed { color: var(--fix); background: var(--fix-bg); font-weight: 700; animation: flip .45s ease; }
+  .cell.cell.revealed { color: var(--reveal); animation: reveal .4s ease both; }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-4px); }
+    40%, 80% { transform: translateX(4px); }
+  }
+  @keyframes flip {
+    0% { transform: rotateX(90deg); }
+    100% { transform: rotateX(0); }
+  }
+  @keyframes reveal {
+    0% { transform: scale(.2); opacity: 0; background: var(--reveal-bg); }
+    60% { transform: scale(1.2); opacity: 1; background: var(--reveal-bg); }
+    100% { transform: scale(1); }
+  }
   @keyframes pop {
     0% { transform: scale(1); }
     40% { transform: scale(1.25); }
@@ -148,16 +174,20 @@
   .actions { display: flex; gap: 8px; }
   .actions button {
     flex: 1;
-    padding: 10px 8px;
+    padding: 10px 4px;
     border-radius: 8px;
     border: 1px solid var(--line);
     background: var(--panel);
     color: var(--ink);
-    font-size: .95rem;
+    font-size: .88rem;
+    white-space: nowrap;
     font-family: inherit;
     cursor: pointer;
   }
   .actions button:active { transform: scale(.97); }
+  .actions button.confirm {
+    background: var(--reveal-bg); border-color: var(--reveal); color: var(--reveal); font-weight: 600;
+  }
 
   .toast {
     min-height: 1.4em;
@@ -213,6 +243,7 @@
   <div class="actions">
     <button id="erase">⌫ Apagar</button>
     <button id="restart">↺ Reiniciar</button>
+    <button id="reveal">💡 Solução</button>
     <button id="newgame">＋ Novo jogo</button>
   </div>
 </div>
@@ -473,12 +504,82 @@
     setTimeout(() => winEl.classList.add('show'), 500);
   }
 
+  // ---------- Revelar solução (com animação) ----------
+  const revealBtn = document.getElementById('reveal');
+  let revealRun = 0, confirmTimer = null;
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+
+  function resetRevealBtn() {
+    clearTimeout(confirmTimer);
+    revealBtn.classList.remove('confirm');
+    revealBtn.textContent = '💡 Solução';
+  }
+
+  function askReveal() {
+    if (finished) return;
+    // Primeiro toque pede confirmação, para não revelar por engano.
+    if (!revealBtn.classList.contains('confirm')) {
+      revealBtn.classList.add('confirm');
+      revealBtn.textContent = 'Confirmar?';
+      msg('Toque de novo em "Confirmar?" para ver a solução.');
+      confirmTimer = setTimeout(() => { resetRevealBtn(); msg(''); }, 3000);
+      return;
+    }
+    resetRevealBtn();
+    reveal();
+  }
+
+  async function reveal() {
+    const run = ++revealRun;
+    finished = true;               // bloqueia jogadas durante a animação
+    clearInterval(timerId);
+    selected = -1;
+    render();
+
+    // 1) Corrige os números errados
+    const wrong = [];
+    for (let i = 0; i < 81; i++) if (grid[i] && grid[i] !== solution[i]) wrong.push(i);
+    if (wrong.length) {
+      msg(`Corrigindo ${wrong.length} ${wrong.length === 1 ? 'número errado' : 'números errados'}…`, 'err');
+      for (const i of wrong) cells[i].classList.add('wrong');
+      await wait(700);
+      for (const i of wrong) {
+        if (run !== revealRun) return;
+        cells[i].classList.remove('wrong');
+        grid[i] = solution[i];
+        cells[i].classList.add('fixed');
+        render();
+        await wait(220);
+      }
+      await wait(400);
+    }
+
+    // 2) Completa as casas vazias
+    const empty = [];
+    for (let i = 0; i < 81; i++) if (!grid[i]) empty.push(i);
+    if (empty.length) msg('Completando a solução…');
+    for (const i of empty) {
+      if (run !== revealRun) return;
+      grid[i] = solution[i];
+      cells[i].classList.add('revealed');
+      render();
+      await wait(60);
+    }
+    if (run !== revealRun) return;
+    msg(wrong.length
+      ? 'Solução revelada. Em laranja: corrigidos; em roxo: completados.'
+      : 'Solução revelada. Em roxo: os números completados.', 'ok');
+  }
+
   function newGame() {
     ({ puzzle, solution } = generateEasy());
     restart();
   }
 
   function restart() {
+    revealRun++;                   // cancela uma animação em andamento
+    resetRevealBtn();
+    for (const c of cells) c.classList.remove('wrong', 'fixed', 'revealed');
     grid = puzzle.slice();
     selected = -1; errors = 0; finished = false;
     winEl.classList.remove('show');
@@ -492,6 +593,7 @@
   document.getElementById('erase').addEventListener('click', erase);
   document.getElementById('restart').addEventListener('click', restart);
   document.getElementById('newgame').addEventListener('click', newGame);
+  revealBtn.addEventListener('click', askReveal);
   document.getElementById('winNew').addEventListener('click', newGame);
 
   // Teclado (opcional, para computador)
