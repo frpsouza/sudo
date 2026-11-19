@@ -7,7 +7,7 @@ Jogo de Sudoku com dificuldade progressiva, num único arquivo. Abra `index.html
 - Número proibido (repetido na linha, coluna ou bloco): casa com fundo vermelho.
 - Quando os 9 de um número estão no tabuleiro, as casas dele ficam com fundo verde e o botão ganha ✓.
 - O botão 💡 Solução (toque duas vezes para confirmar) corrige os números errados (fundo laranja) e completa o resto (fundo roxo), mostrando a lógica de cada número: a varredura da linha, coluna e bloco que elimina os outros candidatos, ou o único lugar onde o número cabe. Durante a animação o botão vira ⏩ Rápido e depois ⏭ Pular.
-- Ao completar um puzzle, o tabuleiro comemora, se limpa e passa para o próximo nível. O nível fica salvo no navegador.
+- Ao completar um puzzle, o tabuleiro comemora, se limpa e passa para o próximo nível. O jogo sempre começa no nível 1, e os botões ◀ e ▶ acima do tabuleiro voltam ou avançam um nível.
 - A dificuldade de cada nível é medida pelo raciocínio que o puzzle exige (como uma pessoa resolveria):
 
   | Nível | Dificuldade | O que o puzzle exige |
